@@ -6,9 +6,29 @@ const cron = require('node-cron');
 const path = require('path');
 const axios = require('axios');
 const XLSX = require('xlsx');
+const fs = require('fs');
+const multer = require('multer');
+
+// Import automation modules
+const automationRoutes = require('./automation/routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Cấu hình multer cho file upload
+const upload = multer({
+    dest: 'uploads/',
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Chỉ chấp nhận file CSV'), false);
+        }
+    },
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB
+    }
+});
 
 // Middleware
 app.use(helmet());
@@ -20,6 +40,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Cache để lưu dữ liệu
 let futuresData = [];
 let lastUpdate = null;
+
+// Export để automation module có thể sử dụng
+// Chỉ export khi không phải là main module
+if (require.main !== module) {
+    module.exports = { futuresData, lastUpdate };
+}
 
 // Hàm lấy dữ liệu từ MEXC API
 async function fetchMEXCFuturesData() {
@@ -87,6 +113,9 @@ app.get('/api/futures', (req, res) => {
             coin.baseAsset.toLowerCase().includes(search.toLowerCase())
         );
     }
+    
+    // Filter chỉ lấy coin USDT, loại bỏ USDC và các quote asset khác
+    filteredData = filteredData.filter(coin => coin.quoteAsset === 'USDT');
     
     // Filter theo price change
     if (minPriceChange !== null) {
@@ -205,6 +234,9 @@ app.get('/api/export/excel', (req, res) => {
         
         let exportData = [...futuresData];
         
+        // Filter chỉ lấy coin USDT, loại bỏ USDC và các quote asset khác
+        exportData = exportData.filter(coin => coin.quoteAsset === 'USDT');
+        
         // Nếu không phải export tất cả, áp dụng filter
         if (exportAll !== 'true') {
             // Filter theo search
@@ -273,7 +305,7 @@ app.get('/api/export/excel', (req, res) => {
         
         // Chuẩn bị dữ liệu cho Excel
         const excelData = exportData.map(coin => ({
-            'Symbol': coin.symbol + '_' + coin.quoteAsset,
+            'Symbol': coin.symbol ,
             'Base Asset': coin.baseAsset,
             'Quote Asset': coin.quoteAsset,
             'Price (USDT)': coin.price.toFixed(4),
@@ -341,6 +373,194 @@ app.get('/api/export/excel', (req, res) => {
         });
     }
 });
+
+// API Upload Template và Export Low OC Strategies
+app.post('/api/upload-template', upload.single('template'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ 
+                error: 'Không có file được upload', 
+                message: 'Vui lòng chọn file CSV template' 
+            });
+        }
+
+        console.log('🔄 Bắt đầu xử lý file template upload...');
+        
+        // Đọc file template đã upload
+        const templatePath = req.file.path;
+        const templateContent = fs.readFileSync(templatePath, 'utf8');
+        const templateLines = templateContent.trim().split('\n').filter(line => line.trim());
+        
+        // Bỏ qua dòng đầu tiên (header) và lấy từ dòng 1 trở đi
+        const dataLines = templateLines.slice(1);
+        
+        if (dataLines.length === 0) {
+            // Cleanup file
+            fs.unlinkSync(templatePath);
+            return res.status(400).json({ 
+                error: 'File template không hợp lệ', 
+                message: 'File CSV phải có ít nhất 1 dòng dữ liệu (không tính header)' 
+            });
+        }
+        
+        console.log(`📄 Đã đọc ${dataLines.length} dòng template từ file upload`);
+        
+        // Lấy danh sách coin USDT từ futuresData và sort theo biến động giá giảm dần
+        const usdtCoins = futuresData
+            .filter(coin => coin.quoteAsset === 'USDT')
+            .sort((a, b) => a.priceChangePercent - b.priceChangePercent);
+        
+        if (usdtCoins.length === 0) {
+            // Cleanup file
+            fs.unlinkSync(templatePath);
+            return res.status(400).json({ 
+                error: 'Không có dữ liệu coin USDT', 
+                message: 'Vui lòng đợi hệ thống cập nhật dữ liệu từ MEXC' 
+            });
+        }
+        
+        console.log(`💰 Tìm thấy ${usdtCoins.length} coin USDT (đã sort theo biến động giá giảm dần)`);
+        console.log(`📉 Top 5 coin giảm mạnh nhất: ${usdtCoins.slice(0, 5).map(coin => `${coin.symbol}(${coin.priceChangePercent.toFixed(2)}%)`).join(', ')}`);
+        
+        // Tạo dữ liệu mới bằng cách nhân bản template cho mỗi coin
+        const generatedLines = [];
+        
+        for (const coin of usdtCoins) {
+            for (const templateLine of dataLines) {
+                // Parse dòng template
+                const columns = templateLine.split(',');
+                
+                // Thay thế symbol ở cột thứ 5 (index 4) với format mới
+                if (columns.length > 4) {
+                    // Chuyển đổi từ BTCUSDT thành BTC_USDT
+                    const formattedSymbol = coin.symbol.replace('USDT', '_USDT');
+                    columns[4] = formattedSymbol;
+                }
+                
+                // Tạo dòng mới
+                const newLine = columns.join(',');
+                generatedLines.push(newLine);
+            }
+        }
+        
+        console.log(`📊 Đã tạo ${generatedLines.length} dòng strategy`);
+        
+        // Tạo nội dung CSV
+        const csvContent = generatedLines.join('\n');
+        
+        // Cleanup file upload
+        fs.unlinkSync(templatePath);
+        
+        // Set headers cho download
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `strategy_OC_thap_upload_${timestamp}.csv`;
+        
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
+        
+        res.send(csvContent);
+        
+        console.log(`✅ Đã tạo file OC thấp từ template upload thành công: ${generatedLines.length} strategies, filename: ${filename}`);
+        
+    } catch (error) {
+        console.error('❌ Lỗi khi xử lý template upload:', error);
+        
+        // Cleanup file nếu có
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        
+        res.status(500).json({ 
+            error: 'Lỗi khi xử lý template upload', 
+            message: error.message 
+        });
+    }
+});
+
+// API Export Low OC Strategies (giữ nguyên cho tương thích)
+app.get('/api/export/low-oc', async (req, res) => {
+    try {
+        console.log('🔄 Bắt đầu tạo file OC thấp...');
+        
+        // Đọc template file
+        const templatePath = path.join(__dirname, 'template_low.csv');
+        if (!fs.existsSync(templatePath)) {
+            return res.status(404).json({ 
+                error: 'Template file không tồn tại', 
+                message: 'File template_low.csv không được tìm thấy' 
+            });
+        }
+        
+        const templateContent = fs.readFileSync(templatePath, 'utf8');
+        const templateLines = templateContent.trim().split('\n').filter(line => line.trim());
+        
+        console.log(`📄 Đã đọc ${templateLines.length} dòng template`);
+        
+        // Lấy danh sách coin USDT từ futuresData và sort theo biến động giá giảm dần
+        const usdtCoins = futuresData
+            .filter(coin => coin.quoteAsset === 'USDT')
+            .sort((a, b) => a.priceChangePercent - b.priceChangePercent); // Sort DESC theo biến động giá (giảm dần)
+        
+        if (usdtCoins.length === 0) {
+            return res.status(400).json({ 
+                error: 'Không có dữ liệu coin USDT', 
+                message: 'Vui lòng đợi hệ thống cập nhật dữ liệu từ MEXC' 
+            });
+        }
+        
+        console.log(`💰 Tìm thấy ${usdtCoins.length} coin USDT (đã sort theo biến động giá giảm dần)`);
+        console.log(`📉 Top 5 coin giảm mạnh nhất: ${usdtCoins.slice(0, 5).map(coin => `${coin.symbol}(${coin.priceChangePercent.toFixed(2)}%)`).join(', ')}`);
+        
+        // Tạo dữ liệu mới bằng cách nhân bản template cho mỗi coin
+        const generatedLines = [];
+        
+        for (const coin of usdtCoins) {
+            for (const templateLine of templateLines) {
+                // Parse dòng template
+                const columns = templateLine.split(',');
+                
+                // Thay thế symbol ở cột thứ 5 (index 4) với format mới
+                if (columns.length > 4) {
+                    // Chuyển đổi từ BTCUSDT thành BTC_USDT
+                    const formattedSymbol = coin.symbol.replace('USDT', '_USDT');
+                    columns[4] = formattedSymbol;
+                }
+                
+                // Tạo dòng mới
+                const newLine = columns.join(',');
+                generatedLines.push(newLine);
+            }
+        }
+        
+        console.log(`📊 Đã tạo ${generatedLines.length} dòng strategy`);
+        
+        // Tạo nội dung CSV
+        const csvContent = generatedLines.join('\n');
+        
+        // Set headers cho download
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `strategy_OC_thap_${timestamp}.csv`;
+        
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
+        
+        res.send(csvContent);
+        
+        console.log(`✅ Đã tạo file OC thấp thành công: ${generatedLines.length} strategies, filename: ${filename}`);
+        
+    } catch (error) {
+        console.error('❌ Lỗi khi tạo file OC thấp:', error);
+        res.status(500).json({ 
+            error: 'Lỗi khi tạo file OC thấp', 
+            message: error.message 
+        });
+    }
+});
+
+// Automation Routes
+app.use('/api/automation', automationRoutes);
 
 // Serve frontend
 app.get('/', (req, res) => {

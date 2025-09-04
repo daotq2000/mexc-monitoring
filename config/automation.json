@@ -1,0 +1,49 @@
+{
+  "automation": {
+    "enabled": true,
+    "intervalHours": 6,
+    "maxCoins": 50,
+    "minPriceChangePercent": 5,
+    "maxPriceChangePercent": 100,
+    "minVolume": 1000000,
+    "sortBy": "priceChangePercent",
+    "sortOrder": "desc"
+  },
+  "csvTemplate": {
+    "userId": "TpsyfqmGHWcHXBdKFT2BDX2Vnla2",
+    "userName": "mexc-daotq",
+    "botId": "68657b85769eaf53113f0dd8",
+    "botName": "Oc trên 100",
+    "tradeType": 2,
+    "interval": "Min1",
+    "ps": 7,
+    "extend": 90,
+    "amount": 100,
+    "takeProfit": 100,
+    "reduceTp": 5,
+    "upReduce": 5,
+    "ignore": 50,
+    "cs": 1000,
+    "win": 0,
+    "lose": 0,
+    "totalPnl": 0,
+    "isRunning": 1,
+    "safeHourHistory": "",
+    "__v": 0
+  },
+  "thirdPartyAPI": {
+    "enabled": false,
+    "baseUrl": "",
+    "endpoint": "/upload-strategy",
+    "apiKey": "",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer "
+    }
+  },
+  "output": {
+    "csvDirectory": "./generated_strategies",
+    "filenamePrefix": "strategy_auto_generated",
+    "includeTimestamp": true
+  }
+}
