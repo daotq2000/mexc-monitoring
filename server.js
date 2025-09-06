@@ -456,6 +456,9 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
         const templateContent = fs.readFileSync(templatePath, 'utf8');
         const templateLines = templateContent.trim().split('\n').filter(line => line.trim());
         
+        // Lấy header từ dòng đầu tiên
+        const headerLine = templateLines[0];
+        
         // Bỏ qua dòng đầu tiên (header) và lấy từ dòng 1 trở đi
         const dataLines = templateLines.slice(1);
         
@@ -527,15 +530,16 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
         
         console.log(`📊 Đã tạo ${generatedLines.length} dòng strategy`);
         
-        // Tạo nội dung CSV
-        const csvContent = generatedLines.join('\n');
+        // Tạo nội dung CSV với header
+        const csvContent = [headerLine, ...generatedLines].join('\n');
         
         // Cleanup file upload
         fs.unlinkSync(templatePath);
         
-        // Set headers cho download
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `strategy_OC_thap_upload_${exchange}_${timestamp}.csv`;
+        // Set headers cho download - sử dụng tên file gốc từ client
+        const originalFilename = req.file.originalname;
+        const filenameWithoutExt = originalFilename.replace(/\.[^/.]+$/, ''); // Bỏ extension
+        const filename = `${filenameWithoutExt}_generated_${exchange}.csv`;
         
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -577,6 +581,9 @@ app.get('/api/export/low-oc', async (req, res) => {
         
         const templateContent = fs.readFileSync(templatePath, 'utf8');
         const templateLines = templateContent.trim().split('\n').filter(line => line.trim());
+        
+        // Lấy header từ dòng đầu tiên
+        const headerLine = templateLines[0];
         
         console.log(`📄 Đã đọc ${templateLines.length} dòng template`);
         
@@ -626,8 +633,8 @@ app.get('/api/export/low-oc', async (req, res) => {
         
         console.log(`📊 Đã tạo ${generatedLines.length} dòng strategy`);
         
-        // Tạo nội dung CSV
-        const csvContent = generatedLines.join('\n');
+        // Tạo nội dung CSV với header
+        const csvContent = [headerLine, ...generatedLines].join('\n');
         
         // Set headers cho download
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

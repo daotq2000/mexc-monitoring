@@ -1,3 +1,4 @@
+_id,externalId,userId,userName,symbol,botId,botName,tradeType,interval,oc,pos,extend,amount,takeProfit,reduceTp,upReduce,ignore,cs,win,lose,totalPnl,isRunning,safeHourH
 ,"wbIaLvBDRU","TpsyfqmGHWgHXBdKFT2BDX2Vnla2","mexc-daotq","1000BONK_USDT","684eaaff21b69fb7f7681d67","Oc trung bình",2,"Min30",40,6,90,100,35,5,5,50,10000,0,0,0,1,0,
 ,"L0Wj8IsOa9","TpsyfqmGHWgHXBdKFT2BDX2Vnla2","mexc-daotq","1000BONK_USDT","684eaaff21b69fb7f7681d67","Oc trung bình",2,"Min30",58,6,90,100,53,5,5,50,10000,0,0,0,1,0,
 ,"1gRGAXQxEP","TpsyfqmGHWgHXBdKFT2BDX2Vnla2","mexc-daotq","1000BONK_USDT","684eaaff21b69fb7f7681d67","Oc trung bình",2,"Min30",76,6,90,100,71,5,5,50,10000,0,0,0,1,0,
