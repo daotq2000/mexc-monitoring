@@ -20,7 +20,9 @@ const checkSchedulerStatus = (req, res, next) => {
 // GET /api/automation/status - Lấy trạng thái hệ thống tự động
 router.get('/status', checkSchedulerStatus, (req, res) => {
     try {
+        const { exchange = 'mexc' } = req.query;
         const status = scheduler.getStatus();
+        status.exchange = exchange;
         res.json({
             success: true,
             data: status

@@ -7,7 +7,8 @@
     "maxPriceChangePercent": 100,
     "minVolume": 1000000,
     "sortBy": "priceChangePercent",
-    "sortOrder": "desc"
+    "sortOrder": "desc",
+    "exchange": "mexc"
   },
   "csvTemplate": {
     "userId": "TpsyfqmGHWcHXBdKFT2BDX2Vnla2",

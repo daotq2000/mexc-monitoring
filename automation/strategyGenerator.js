@@ -37,14 +37,15 @@ class StrategyGenerator {
                 sortOrder: this.config.automation.sortOrder,
                 minPriceChange: this.config.automation.minPriceChangePercent,
                 maxPriceChange: this.config.automation.maxPriceChangePercent,
-                minVolume: this.config.automation.minVolume
+                minVolume: this.config.automation.minVolume,
+                exchange: this.config.automation.exchange || 'mexc'
             });
 
             const response = await axios.get(`http://localhost:3000/api/futures?${params}`);
             
-            if (response.data && response.data.length > 0) {
-                console.log(`📊 Đã lấy được ${response.data.length} coin USDT biến động`);
-                return response.data;
+            if (response.data && response.data.data && response.data.data.length > 0) {
+                console.log(`📊 Đã lấy được ${response.data.data.length} coin USDT biến động từ ${response.data.exchange || 'MEXC'}`);
+                return response.data.data;
             } else {
                 console.log('⚠️ Không có dữ liệu coin nào');
                 return [];

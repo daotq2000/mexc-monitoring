@@ -11,6 +11,7 @@ const multer = require('multer');
 
 // Import automation modules
 const automationRoutes = require('./automation/routes');
+const GateIOClient = require('./gateio-client');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,11 +41,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Cache để lưu dữ liệu
 let futuresData = [];
 let lastUpdate = null;
+let gateIOData = [];
+let gateIOLastUpdate = null;
+
+// Khởi tạo Gate.io client
+const gateIOClient = new GateIOClient();
 
 // Export để automation module có thể sử dụng
 // Chỉ export khi không phải là main module
 if (require.main !== module) {
-    module.exports = { futuresData, lastUpdate };
+    module.exports = { futuresData, lastUpdate, gateIOData, gateIOLastUpdate };
 }
 
 // Hàm lấy dữ liệu từ MEXC API
@@ -87,8 +93,28 @@ async function fetchMEXCFuturesData() {
     }
 }
 
+// Hàm lấy dữ liệu từ Gate.io API
+async function fetchGateIOFuturesData() {
+    try {
+        console.log('Đang cập nhật dữ liệu từ Gate.io Futures API...');
+        
+        const data = await gateIOClient.fetchFuturesData();
+        
+        if (data && data.length > 0) {
+            gateIOData = data;
+            gateIOLastUpdate = new Date().toISOString();
+            console.log(`Đã cập nhật ${gateIOData.length} futures contracts từ Gate.io`);
+        } else {
+            console.log('Không có dữ liệu từ Gate.io API');
+        }
+    } catch (error) {
+        console.error('Lỗi khi lấy dữ liệu từ Gate.io API:', error.message);
+    }
+}
+
 // Cập nhật dữ liệu mỗi 1 phút
 cron.schedule('* * * * *', fetchMEXCFuturesData);
+cron.schedule('* * * * *', fetchGateIOFuturesData);
 
 // API Routes
 app.get('/api/futures', (req, res) => {
@@ -101,10 +127,23 @@ app.get('/api/futures', (req, res) => {
         minVolume = null,
         maxVolume = null,
         minMarketCap = null,
-        maxMarketCap = null
+        maxMarketCap = null,
+        exchange = 'mexc' // Thêm tham số chọn sàn giao dịch
     } = req.query;
     
-    let filteredData = [...futuresData];
+    // Chọn dữ liệu theo sàn giao dịch
+    let sourceData = [];
+    let sourceLastUpdate = null;
+    
+    if (exchange === 'gateio') {
+        sourceData = [...gateIOData];
+        sourceLastUpdate = gateIOLastUpdate;
+    } else {
+        sourceData = [...futuresData];
+        sourceLastUpdate = lastUpdate;
+    }
+    
+    let filteredData = [...sourceData];
     
     // Filter theo search
     if (search) {
@@ -175,44 +214,57 @@ app.get('/api/futures', (req, res) => {
     res.json({
         data: filteredData,
         total: filteredData.length,
-        lastUpdate: lastUpdate
+        lastUpdate: sourceLastUpdate,
+        exchange: exchange
     });
 });
 
 app.get('/api/stats', (req, res) => {
-    if (futuresData.length === 0) {
+    const { exchange = 'mexc' } = req.query;
+    
+    // Chọn dữ liệu theo sàn giao dịch
+    let sourceData = [];
+    if (exchange === 'gateio') {
+        sourceData = [...gateIOData];
+    } else {
+        sourceData = [...futuresData];
+    }
+    
+    if (sourceData.length === 0) {
         return res.json({
             totalCoins: 0,
             totalMarketCap: 0,
             avgPriceChange: 0,
             topGainers: [],
             topLosers: [],
-            highestVolume: []
+            highestVolume: [],
+            exchange: exchange
         });
     }
     
-    const totalMarketCap = futuresData.reduce((sum, coin) => sum + coin.marketCap, 0);
-    const avgPriceChange = futuresData.reduce((sum, coin) => sum + coin.priceChangePercent, 0) / futuresData.length;
+    const totalMarketCap = sourceData.reduce((sum, coin) => sum + coin.marketCap, 0);
+    const avgPriceChange = sourceData.reduce((sum, coin) => sum + coin.priceChangePercent, 0) / sourceData.length;
     
-    const topGainers = [...futuresData]
+    const topGainers = [...sourceData]
         .sort((a, b) => b.priceChangePercent - a.priceChangePercent)
         .slice(0, 10);
     
-    const topLosers = [...futuresData]
+    const topLosers = [...sourceData]
         .sort((a, b) => a.priceChangePercent - b.priceChangePercent)
         .slice(0, 10);
     
-    const highestVolume = [...futuresData]
+    const highestVolume = [...sourceData]
         .sort((a, b) => b.volume - a.volume)
         .slice(0, 10);
     
     res.json({
-        totalCoins: futuresData.length,
+        totalCoins: sourceData.length,
         totalMarketCap: totalMarketCap,
         avgPriceChange: avgPriceChange,
         topGainers: topGainers,
         topLosers: topLosers,
-        highestVolume: highestVolume
+        highestVolume: highestVolume,
+        exchange: exchange
     });
 });
 
@@ -229,10 +281,19 @@ app.get('/api/export/excel', (req, res) => {
             maxVolume = null,
             minMarketCap = null,
             maxMarketCap = null,
-            exportAll = 'false'
+            exportAll = 'false',
+            exchange = 'mexc'
         } = req.query;
         
-        let exportData = [...futuresData];
+        // Chọn dữ liệu theo sàn giao dịch
+        let sourceData = [];
+        if (exchange === 'gateio') {
+            sourceData = [...gateIOData];
+        } else {
+            sourceData = [...futuresData];
+        }
+        
+        let exportData = [...sourceData];
         
         // Filter chỉ lấy coin USDT, loại bỏ USDC và các quote asset khác
         exportData = exportData.filter(coin => coin.quoteAsset === 'USDT');
@@ -325,7 +386,8 @@ app.get('/api/export/excel', (req, res) => {
         const worksheet = XLSX.utils.json_to_sheet(excelData);
         
         // Đặt tên worksheet
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'MEXC Futures Data');
+        const sheetName = exchange === 'gateio' ? 'Gate.io Futures Data' : 'MEXC Futures Data';
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
         
         // Tự động điều chỉnh cột
         const colWidths = [
@@ -353,9 +415,10 @@ app.get('/api/export/excel', (req, res) => {
         
         // Set headers cho download
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const exchangePrefix = exchange === 'gateio' ? 'gateio' : 'mexc';
         const filename = exportAll === 'true' ? 
-            `mexc-futures-all-${timestamp}.xlsx` : 
-            `mexc-futures-filtered-${timestamp}.xlsx`;
+            `${exchangePrefix}-futures-all-${timestamp}.xlsx` : 
+            `${exchangePrefix}-futures-filtered-${timestamp}.xlsx`;
         
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -377,6 +440,8 @@ app.get('/api/export/excel', (req, res) => {
 // API Upload Template và Export Low OC Strategies
 app.post('/api/upload-template', upload.single('template'), async (req, res) => {
     try {
+        const { exchange = 'mexc' } = req.body;
+        
         if (!req.file) {
             return res.status(400).json({ 
                 error: 'Không có file được upload', 
@@ -384,7 +449,7 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
             });
         }
 
-        console.log('🔄 Bắt đầu xử lý file template upload...');
+        console.log(`🔄 Bắt đầu xử lý file template upload cho ${exchange}...`);
         
         // Đọc file template đã upload
         const templatePath = req.file.path;
@@ -405,8 +470,16 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
         
         console.log(`📄 Đã đọc ${dataLines.length} dòng template từ file upload`);
         
-        // Lấy danh sách coin USDT từ futuresData và sort theo biến động giá giảm dần
-        const usdtCoins = futuresData
+        // Chọn dữ liệu theo sàn giao dịch
+        let sourceData = [];
+        if (exchange === 'gateio') {
+            sourceData = [...gateIOData];
+        } else {
+            sourceData = [...futuresData];
+        }
+        
+        // Lấy danh sách coin USDT từ sourceData và sort theo biến động giá giảm dần
+        const usdtCoins = sourceData
             .filter(coin => coin.quoteAsset === 'USDT')
             .sort((a, b) => a.priceChangePercent - b.priceChangePercent);
         
@@ -415,7 +488,7 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
             fs.unlinkSync(templatePath);
             return res.status(400).json({ 
                 error: 'Không có dữ liệu coin USDT', 
-                message: 'Vui lòng đợi hệ thống cập nhật dữ liệu từ MEXC' 
+                message: `Vui lòng đợi hệ thống cập nhật dữ liệu từ ${exchange.toUpperCase()}` 
             });
         }
         
@@ -432,8 +505,17 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
                 
                 // Thay thế symbol ở cột thứ 5 (index 4) với format mới
                 if (columns.length > 4) {
-                    // Chuyển đổi từ BTCUSDT thành BTC_USDT
-                    const formattedSymbol = coin.symbol.replace('USDT', '_USDT');
+                    // Xử lý symbol theo từng sàn giao dịch
+                    let formattedSymbol = coin.symbol;
+                    
+                    if (exchange === 'mexc') {
+                        // MEXC: chuyển từ BTCUSDT thành BTC_USDT
+                        formattedSymbol = coin.symbol.replace('USDT', '_USDT');
+                    } else if (exchange === 'gateio') {
+                        // Gate.io: giữ nguyên format BTC_USDT (đã có sẵn dấu gạch dưới)
+                        formattedSymbol = coin.symbol;
+                    }
+                    
                     columns[4] = formattedSymbol;
                 }
                 
@@ -453,7 +535,7 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
         
         // Set headers cho download
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `strategy_OC_thap_upload_${timestamp}.csv`;
+        const filename = `strategy_OC_thap_upload_${exchange}_${timestamp}.csv`;
         
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -481,7 +563,8 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
 // API Export Low OC Strategies (giữ nguyên cho tương thích)
 app.get('/api/export/low-oc', async (req, res) => {
     try {
-        console.log('🔄 Bắt đầu tạo file OC thấp...');
+        const { exchange = 'mexc' } = req.query;
+        console.log(`🔄 Bắt đầu tạo file OC thấp cho ${exchange}...`);
         
         // Đọc template file
         const templatePath = path.join(__dirname, 'template_low.csv');
@@ -497,15 +580,23 @@ app.get('/api/export/low-oc', async (req, res) => {
         
         console.log(`📄 Đã đọc ${templateLines.length} dòng template`);
         
-        // Lấy danh sách coin USDT từ futuresData và sort theo biến động giá giảm dần
-        const usdtCoins = futuresData
+        // Chọn dữ liệu theo sàn giao dịch
+        let sourceData = [];
+        if (exchange === 'gateio') {
+            sourceData = [...gateIOData];
+        } else {
+            sourceData = [...futuresData];
+        }
+        
+        // Lấy danh sách coin USDT từ sourceData và sort theo biến động giá giảm dần
+        const usdtCoins = sourceData
             .filter(coin => coin.quoteAsset === 'USDT')
             .sort((a, b) => a.priceChangePercent - b.priceChangePercent); // Sort DESC theo biến động giá (giảm dần)
         
         if (usdtCoins.length === 0) {
             return res.status(400).json({ 
                 error: 'Không có dữ liệu coin USDT', 
-                message: 'Vui lòng đợi hệ thống cập nhật dữ liệu từ MEXC' 
+                message: `Vui lòng đợi hệ thống cập nhật dữ liệu từ ${exchange.toUpperCase()}` 
             });
         }
         
@@ -540,7 +631,7 @@ app.get('/api/export/low-oc', async (req, res) => {
         
         // Set headers cho download
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `strategy_OC_thap_${timestamp}.csv`;
+        const filename = `strategy_OC_thap_${exchange}_${timestamp}.csv`;
         
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -569,8 +660,9 @@ app.get('/', (req, res) => {
 
 // Khởi tạo dữ liệu khi server start
 fetchMEXCFuturesData();
+fetchGateIOFuturesData();
 
 app.listen(PORT, () => {
     console.log(`Server đang chạy tại http://localhost:${PORT}`);
-    console.log('Đang cập nhật dữ liệu từ MEXC...');
+    console.log('Đang cập nhật dữ liệu từ MEXC và Gate.io...');
 });
