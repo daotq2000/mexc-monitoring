@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Excel Export</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .btn { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background: #0056b3; }
+        .result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Excel Export</h1>
+    
+    <div id="status" class="result info">
+        <strong>Status:</strong> Đang kiểm tra XLSX library...
+    </div>
+    
+    <button id="testBtn" class="btn" disabled>Test Export Excel</button>
+    
+    <div id="logs" style="margin-top: 20px;">
+        <h3>📋 Console Logs:</h3>
+        <div id="logContainer" style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; max-height: 300px; overflow-y: auto;"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" 
+            onload="console.log('XLSX loaded successfully from primary CDN')" 
+            onerror="loadXLSXBackup()"></script>
+    <script>
+        let xlsxLoadAttempts = 0;
+        const statusDiv = document.getElementById('status');
+        const testBtn = document.getElementById('testBtn');
+        const logContainer = document.getElementById('logContainer');
+        
+        // Override console.log to show in UI
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        function addLog(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.style.color = type === 'error' ? '#dc3545' : type === 'warn' ? '#ffc107' : '#6c757d';
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLog(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLog(args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLog(args.join(' '), 'warn');
+        };
+        
+        function loadXLSXBackup() {
+            console.warn('Primary XLSX CDN failed, trying backup...');
+            if (xlsxLoadAttempts < 2) {
+                xlsxLoadAttempts++;
+                const script = document.createElement('script');
+                script.src = xlsxLoadAttempts === 1 
+                    ? 'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+                    : 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                script.onload = () => {
+                    console.log(`XLSX loaded successfully from backup CDN ${xlsxLoadAttempts}`);
+                    checkXLSX();
+                };
+                script.onerror = () => {
+                    console.error(`Backup CDN ${xlsxLoadAttempts} failed`);
+                    if (xlsxLoadAttempts < 2) {
+                        loadXLSXBackup();
+                    } else {
+                        console.error('All XLSX CDNs failed');
+                        updateStatus('❌ Tất cả CDN XLSX đều thất bại!', 'error');
+                    }
+                };
+                document.head.appendChild(script);
+            }
+        }
+        
+        function updateStatus(message, type) {
+            statusDiv.className = `result ${type}`;
+            statusDiv.innerHTML = `<strong>Status:</strong> ${message}`;
+        }
+        
+        function checkXLSX() {
+            if (typeof XLSX !== 'undefined') {
+                console.log('✅ XLSX is ready!');
+                updateStatus('✅ XLSX library đã sẵn sàng!', 'success');
+                testBtn.disabled = false;
+                testBtn.textContent = 'Test Export Excel';
+            } else {
+                console.log('⏳ Waiting for XLSX...');
+                setTimeout(checkXLSX, 100);
+            }
+        }
+        
+        // Test export function
+        testBtn.addEventListener('click', () => {
+            try {
+                console.log('🧪 Starting export test...');
+                
+                // Create test data
+                const testData = [
+                    { 'Coin': 'BTC', 'Price': 50000, 'Change': '5.2%' },
+                    { 'Coin': 'ETH', 'Price': 3000, 'Change': '3.1%' },
+                    { 'Coin': 'SPARK', 'Price': 0.027, 'Change': '79.11%' }
+                ];
+                
+                // Create workbook
+                const workbook = XLSX.utils.book_new();
+                const worksheet = XLSX.utils.json_to_sheet(testData);
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Data');
+                
+                // Generate filename
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                const fileName = `test-export-${timestamp}.xlsx`;
+                
+                // Export file
+                XLSX.writeFile(workbook, fileName);
+                
+                console.log(`✅ Export successful! File: ${fileName}`);
+                updateStatus(`✅ Export thành công! File: ${fileName}`, 'success');
+                
+            } catch (error) {
+                console.error('❌ Export failed:', error.message);
+                updateStatus(`❌ Export thất bại: ${error.message}`, 'error');
+            }
+        });
+        
+        // Start checking
+        setTimeout(checkXLSX, 100);
+        
+        // Fallback timeout
+        setTimeout(() => {
+            if (typeof XLSX === 'undefined') {
+                console.error('⏰ Timeout: XLSX not loaded after 5 seconds');
+                updateStatus('⏰ Timeout: Không thể load XLSX sau 5 giây', 'error');
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
+

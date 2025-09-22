@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEXC Futures Monitoring</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-chart-line"></i> Crypto Futures Monitor</h1>
+                <div class="header-actions">
+                    <div class="exchange-selector">
+                        <div class="exchange-selector-row">
+                            <label for="exchangeSelect">Sàn giao dịch:</label>
+                            <select id="exchangeSelect" class="exchange-select">
+                                <option value="mexc">🔥 MEXC</option>
+                                <option value="gateio">🚪 Gate.io</option>
+                            </select>
+                        </div>
+                        <div class="exchange-links">
+                            <a href="https://www.mexc.com" target="_blank" id="mexcLink" class="exchange-link mexc-link" title="Mở MEXC Exchange">
+                                <i class="fas fa-external-link-alt"></i> MEXC
+                            </a>
+                            <a href="https://www.gate.io" target="_blank" id="gateioLink" class="exchange-link gateio-link" title="Mở Gate.io Exchange">
+                                <i class="fas fa-external-link-alt"></i> Gate.io
+                            </a>
+                        </div>
+                    </div>
+                    <a href="/automation.html" class="automation-link">
+                        <i class="fas fa-robot"></i> Automation
+                    </a>
+                    <div class="last-update">
+                        <i class="fas fa-clock"></i>
+                        <span id="lastUpdate">Đang cập nhật...</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="totalCoins">-</h3>
+                    <p>Tổng số coin</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="totalMarketCap">-</h3>
+                    <p>Tổng vốn hóa</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="avgPriceChange">-</h3>
+                    <p>Biến động TB</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-container">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Tìm kiếm coin...">
+            </div>
+            
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label>Biến động giá (%)</label>
+                    <div class="range-inputs">
+                        <input type="number" id="minPriceChange" placeholder="Min" step="0.01">
+                        <span>-</span>
+                        <input type="number" id="maxPriceChange" placeholder="Max" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Volume (24h)</label>
+                    <div class="range-inputs">
+                        <input type="number" id="minVolume" placeholder="Min">
+                        <span>-</span>
+                        <input type="number" id="maxVolume" placeholder="Max">
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Vốn hóa</label>
+                    <div class="range-inputs">
+                        <input type="number" id="minMarketCap" placeholder="Min">
+                        <span>-</span>
+                        <input type="number" id="maxMarketCap" placeholder="Max">
+                    </div>
+                </div>
+                
+                <button id="applyFilters" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> Áp dụng
+                </button>
+                <button id="clearFilters" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Xóa
+                </button>
+            </div>
+        </div>
+
+        <!-- Sort Controls -->
+        <div class="sort-container">
+            <div class="sort-controls">
+                <label>Sắp xếp theo:</label>
+                <select id="sortBy">
+                    <option value="symbol">Tên coin</option>
+                    <option value="price">Giá</option>
+                    <option value="priceChangePercent">Biến động (%)</option>
+                    <option value="volume">Volume</option>
+                    <option value="marketCap">Vốn hóa</option>
+                    <option value="high24h">Giá cao nhất 24h</option>
+                    <option value="low24h">Giá thấp nhất 24h</option>
+                </select>
+                <button id="sortOrder" class="btn btn-outline">
+                    <i class="fas fa-sort-amount-up"></i>
+                </button>
+            </div>
+            <div class="export-section">
+                <div class="export-controls">
+                    <button id="exportExcel" class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </button>
+                    <button id="exportAllExcel" class="btn btn-outline-success">
+                        <i class="fas fa-download"></i> Export Tất cả
+                    </button>
+                    <button id="exportLowOC" class="btn btn-warning">
+                        <i class="fas fa-file-csv"></i> Tải OC thấp
+                    </button>
+                    <button id="uploadTemplate" class="btn btn-info">
+                        <i class="fas fa-upload"></i> Upload Template
+                    </button>
+                    <input type="file" id="templateFile" accept=".csv" style="display: none;">
+                </div>
+                <div class="results-info">
+                    <span id="resultsCount">0</span> kết quả
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Coin</th>
+                        <th>Giá hiện tại</th>
+                        <th>Biến động 24h</th>
+                        <th>Volume 24h</th>
+                        <th>Vốn hóa</th>
+                        <th>Giá cao nhất</th>
+                        <th>Giá thấp nhất</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="7" class="loading">Đang tải dữ liệu...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Top Performers -->
+        <div class="top-performers">
+            <div class="top-section">
+                <h3><i class="fas fa-arrow-up text-success"></i> Top Gainers</h3>
+                <div class="top-list" id="topGainers"></div>
+            </div>
+            <div class="top-section">
+                <h3><i class="fas fa-arrow-down text-danger"></i> Top Losers</h3>
+                <div class="top-list" id="topLosers"></div>
+            </div>
+            <div class="top-section">
+                <h3><i class="fas fa-chart-bar"></i> Highest Volume</h3>
+                <div class="top-list" id="highestVolume"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

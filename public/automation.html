@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Automation Management</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .automation-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .status-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .exchange-selector-container {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .exchange-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .exchange-selector label {
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+        }
+        
+        .exchange-select {
+            padding: 8px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 120px;
+        }
+        
+        .exchange-select:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+        }
+        
+        .exchange-select:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .exchange-select option {
+            background: #2d3748;
+            color: white;
+        }
+        
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .control-btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-start {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+        
+        .btn-stop {
+            background: linear-gradient(135deg, #f44336, #da190b);
+            color: white;
+        }
+        
+        .btn-run-now {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .files-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+        }
+        
+        .file-info {
+            flex: 1;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-download {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+        
+        .config-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .config-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .config-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .config-group input, .config-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .save-config-btn {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .save-config-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-running {
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-stopped {
+            background: #f44336;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="automation-container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-robot"></i> MEXC Automation Management</h1>
+                <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Quay lại Dashboard</a>
+            </div>
+        </header>
+
+        <!-- Status Card -->
+        <div class="status-card">
+            <h2><i class="fas fa-info-circle"></i> Trạng thái hệ thống</h2>
+            <div class="exchange-selector-container">
+                <div class="exchange-selector">
+                    <div class="exchange-selector-row">
+                        <label for="automationExchangeSelect">Sàn giao dịch:</label>
+                        <select id="automationExchangeSelect" class="exchange-select">
+                            <option value="mexc">🔥 MEXC</option>
+                            <option value="gateio">🚪 Gate.io</option>
+                        </select>
+                    </div>
+                    <div class="exchange-links">
+                        <a href="https://www.mexc.com" target="_blank" id="automationMexcLink" class="exchange-link mexc-link" title="Mở MEXC Exchange">
+                            <i class="fas fa-external-link-alt"></i> MEXC
+                        </a>
+                        <a href="https://www.gate.io" target="_blank" id="automationGateioLink" class="exchange-link gateio-link" title="Mở Gate.io Exchange">
+                            <i class="fas fa-external-link-alt"></i> Gate.io
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div id="systemStatus">
+                <p><strong>Trạng thái:</strong> <span id="statusText">Đang kiểm tra...</span></p>
+                <p><strong>Lần chạy cuối:</strong> <span id="lastRun">-</span></p>
+                <p><strong>Lần chạy tiếp theo:</strong> <span id="nextRun">-</span></p>
+                <p><strong>Tổng số lần chạy:</strong> <span id="runCount">0</span></p>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <button id="startBtn" class="control-btn btn-start">
+                <i class="fas fa-play"></i> Khởi động
+            </button>
+            <button id="stopBtn" class="control-btn btn-stop">
+                <i class="fas fa-stop"></i> Dừng
+            </button>
+            <button id="runNowBtn" class="control-btn btn-run-now">
+                <i class="fas fa-bolt"></i> Chạy ngay
+            </button>
+        </div>
+
+        <!-- Files Section -->
+        <div class="files-section">
+            <h3><i class="fas fa-file-alt"></i> Files đã generate</h3>
+            <div id="filesList">
+                <p>Đang tải danh sách files...</p>
+            </div>
+        </div>
+
+        <!-- Configuration Section -->
+        <div class="config-section">
+            <h3><i class="fas fa-cog"></i> Cấu hình hệ thống</h3>
+            <div class="config-grid">
+                <div class="config-group">
+                    <label>Interval (giờ):</label>
+                    <input type="number" id="intervalHours" min="1" max="24" value="6">
+                </div>
+                <div class="config-group">
+                    <label>Số coin tối đa:</label>
+                    <input type="number" id="maxCoins" min="10" max="100" value="50">
+                </div>
+                <div class="config-group">
+                    <label>% thay đổi giá tối thiểu:</label>
+                    <input type="number" id="minPriceChange" min="0" max="100" value="5">
+                </div>
+                <div class="config-group">
+                    <label>% thay đổi giá tối đa:</label>
+                    <input type="number" id="maxPriceChange" min="0" max="1000" value="100">
+                </div>
+                <div class="config-group">
+                    <label>Volume tối thiểu:</label>
+                    <input type="number" id="minVolume" min="100000" step="100000" value="1000000">
+                </div>
+                <div class="config-group">
+                    <label>Sắp xếp theo:</label>
+                    <select id="sortBy">
+                        <option value="priceChangePercent">% Thay đổi giá</option>
+                        <option value="volume">Volume</option>
+                        <option value="marketCap">Market Cap</option>
+                        <option value="symbol">Symbol</option>
+                    </select>
+                </div>
+                <div class="config-group">
+                    <label>Thứ tự sắp xếp:</label>
+                    <select id="sortOrder">
+                        <option value="desc">Giảm dần</option>
+                        <option value="asc">Tăng dần</option>
+                    </select>
+                </div>
+            </div>
+            <button id="saveConfigBtn" class="save-config-btn">
+                <i class="fas fa-save"></i> Lưu cấu hình
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class AutomationManager {
+            constructor() {
+                this.currentExchange = 'mexc';
+                this.init();
+            }
+
+            updateExchangeTheme() {
+                // Remove existing exchange classes
+                document.body.classList.remove('exchange-mexc', 'exchange-gateio');
+                
+                // Add current exchange class
+                document.body.classList.add(`exchange-${this.currentExchange}`);
+                
+                // Update page title
+                const title = document.querySelector('h1');
+                if (title) {
+                    const exchangeName = this.currentExchange === 'mexc' ? 'MEXC' : 'Gate.io';
+                    const icon = this.currentExchange === 'mexc' ? '🔥' : '🚪';
+                    title.innerHTML = `<i class="fas fa-robot"></i> ${icon} ${exchangeName} Automation Management`;
+                }
+
+                // Update exchange links highlighting
+                this.updateExchangeLinks();
+            }
+
+            updateExchangeLinks() {
+                const mexcLink = document.getElementById('automationMexcLink');
+                const gateioLink = document.getElementById('automationGateioLink');
+                
+                if (mexcLink && gateioLink) {
+                    // Reset all links
+                    mexcLink.style.opacity = '1';
+                    gateioLink.style.opacity = '1';
+                    mexcLink.style.pointerEvents = 'auto';
+                    gateioLink.style.pointerEvents = 'auto';
+                    
+                    // Highlight current exchange link
+                    if (this.currentExchange === 'mexc') {
+                        gateioLink.style.opacity = '0.6';
+                        gateioLink.style.pointerEvents = 'none';
+                    } else {
+                        mexcLink.style.opacity = '0.6';
+                        mexcLink.style.pointerEvents = 'none';
+                    }
+                }
+            }
+
+            async init() {
+                this.updateExchangeTheme(); // Apply initial theme
+                await this.loadStatus();
+                await this.loadFiles();
+                await this.loadConfig();
+                this.setupEventListeners();
+                this.startAutoRefresh();
+            }
+
+            setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => this.startAutomation());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stopAutomation());
+                document.getElementById('runNowBtn').addEventListener('click', () => this.runNow());
+                document.getElementById('saveConfigBtn').addEventListener('click', () => this.saveConfig());
+                
+                // Exchange selector
+                document.getElementById('automationExchangeSelect').addEventListener('change', (e) => {
+                    this.currentExchange = e.target.value;
+                    this.updateExchangeTheme();
+                    this.loadStatus();
+                });
+            }
+
+            async loadStatus() {
+                try {
+                    const response = await fetch(`/api/automation/status?exchange=${this.currentExchange}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.updateStatusUI(data.data);
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi load status:', error);
+                }
+            }
+
+            updateStatusUI(status) {
+                const statusText = document.getElementById('statusText');
+                const lastRun = document.getElementById('lastRun');
+                const nextRun = document.getElementById('nextRun');
+                const runCount = document.getElementById('runCount');
+
+                if (status.isRunning) {
+                    statusText.innerHTML = '<span class="status-indicator status-running"></span>Đang chạy';
+                } else {
+                    statusText.innerHTML = '<span class="status-indicator status-stopped"></span>Đã dừng';
+                }
+
+                lastRun.textContent = status.lastRun ? new Date(status.lastRun).toLocaleString('vi-VN') : 'Chưa có';
+                nextRun.textContent = status.nextRun ? new Date(status.nextRun).toLocaleString('vi-VN') : '-';
+                runCount.textContent = status.runCount || 0;
+
+                // Update button states
+                document.getElementById('startBtn').disabled = status.isRunning;
+                document.getElementById('stopBtn').disabled = !status.isRunning;
+                document.getElementById('runNowBtn').disabled = status.isRunning;
+            }
+
+            async loadFiles() {
+                try {
+                    const response = await fetch('/api/automation/files');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.updateFilesUI(data.data);
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi load files:', error);
+                }
+            }
+
+            updateFilesUI(files) {
+                const filesList = document.getElementById('filesList');
+                
+                if (files.length === 0) {
+                    filesList.innerHTML = '<p>Chưa có file nào được generate</p>';
+                    return;
+                }
+
+                const filesHTML = files.map(file => `
+                    <div class="file-item">
+                        <div class="file-info">
+                            <strong>${file.filename}</strong><br>
+                            <small>Kích thước: ${this.formatFileSize(file.size)} | 
+                                   Tạo: ${new Date(file.created).toLocaleString('vi-VN')}</small>
+                        </div>
+                        <div class="file-actions">
+                            <button class="action-btn btn-download" onclick="automationManager.downloadFile('${file.filename}')">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                            <button class="action-btn btn-delete" onclick="automationManager.deleteFile('${file.filename}')">
+                                <i class="fas fa-trash"></i> Xóa
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+                filesList.innerHTML = filesHTML;
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            async loadConfig() {
+                try {
+                    const response = await fetch('/api/automation/config');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.updateConfigUI(data.data);
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi load config:', error);
+                }
+            }
+
+            updateConfigUI(config) {
+                if (config.automation) {
+                    document.getElementById('intervalHours').value = config.automation.intervalHours || 6;
+                    document.getElementById('maxCoins').value = config.automation.maxCoins || 50;
+                    document.getElementById('minPriceChange').value = config.automation.minPriceChangePercent || 5;
+                    document.getElementById('maxPriceChange').value = config.automation.maxPriceChangePercent || 100;
+                    document.getElementById('minVolume').value = config.automation.minVolume || 1000000;
+                    document.getElementById('sortBy').value = config.automation.sortBy || 'priceChangePercent';
+                    document.getElementById('sortOrder').value = config.automation.sortOrder || 'desc';
+                }
+            }
+
+            async startAutomation() {
+                try {
+                    this.setLoading(true);
+                    const response = await fetch('/api/automation/start', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showNotification('Khởi động thành công!', 'success');
+                        await this.loadStatus();
+                    } else {
+                        this.showNotification('Lỗi: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    this.showNotification('Lỗi khi khởi động: ' + error.message, 'error');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            async stopAutomation() {
+                try {
+                    this.setLoading(true);
+                    const response = await fetch('/api/automation/stop', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showNotification('Dừng thành công!', 'success');
+                        await this.loadStatus();
+                    } else {
+                        this.showNotification('Lỗi: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    this.showNotification('Lỗi khi dừng: ' + error.message, 'error');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            async runNow() {
+                try {
+                    this.setLoading(true);
+                    const response = await fetch('/api/automation/run-now', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showNotification('Đã khởi chạy quy trình!', 'success');
+                        await this.loadStatus();
+                    } else {
+                        this.showNotification('Lỗi: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    this.showNotification('Lỗi khi chạy: ' + error.message, 'error');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            async saveConfig() {
+                try {
+                    this.setLoading(true);
+                    
+                    const config = {
+                        automation: {
+                            enabled: true,
+                            intervalHours: parseInt(document.getElementById('intervalHours').value),
+                            maxCoins: parseInt(document.getElementById('maxCoins').value),
+                            minPriceChangePercent: parseInt(document.getElementById('minPriceChange').value),
+                            maxPriceChangePercent: parseInt(document.getElementById('maxPriceChange').value),
+                            minVolume: parseInt(document.getElementById('minVolume').value),
+                            sortBy: document.getElementById('sortBy').value,
+                            sortOrder: document.getElementById('sortOrder').value
+                        },
+                        csvTemplate: {
+                            userId: "TpsyfqmGHWcHXBdKFT2BDX2Vnla2",
+                            userName: "mexc-daotq",
+                            botId: "68657b85769eaf53113f0dd8",
+                            botName: "Oc trên 100",
+                            tradeType: 2,
+                            interval: "Min1",
+                            ps: 7,
+                            extend: 90,
+                            amount: 100,
+                            takeProfit: 100,
+                            reduceTp: 5,
+                            upReduce: 5,
+                            ignore: 50,
+                            cs: 1000,
+                            win: 0,
+                            lose: 0,
+                            totalPnl: 0,
+                            isRunning: 1,
+                            safeHourHistory: "",
+                            __v: 0
+                        },
+                        thirdPartyAPI: {
+                            enabled: false,
+                            baseUrl: "",
+                            endpoint: "/upload-strategy",
+                            apiKey: "",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": "Bearer "
+                            }
+                        },
+                        output: {
+                            csvDirectory: "./generated_strategies",
+                            filenamePrefix: "strategy_auto_generated",
+                            includeTimestamp: true
+                        }
+                    };
+
+                    const response = await fetch('/api/automation/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(config)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showNotification('Lưu cấu hình thành công!', 'success');
+                    } else {
+                        this.showNotification('Lỗi: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    this.showNotification('Lỗi khi lưu: ' + error.message, 'error');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            async downloadFile(filename) {
+                try {
+                    window.open(`/api/automation/files/${filename}`, '_blank');
+                } catch (error) {
+                    this.showNotification('Lỗi khi download: ' + error.message, 'error');
+                }
+            }
+
+            async deleteFile(filename) {
+                if (!confirm(`Bạn có chắc muốn xóa file "${filename}"?`)) return;
+                
+                try {
+                    const response = await fetch(`/api/automation/files/${filename}`, { method: 'DELETE' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.showNotification('Xóa file thành công!', 'success');
+                        await this.loadFiles();
+                    } else {
+                        this.showNotification('Lỗi: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    this.showNotification('Lỗi khi xóa: ' + error.message, 'error');
+                }
+            }
+
+            setLoading(loading) {
+                const container = document.querySelector('.automation-container');
+                if (loading) {
+                    container.classList.add('loading');
+                } else {
+                    container.classList.remove('loading');
+                }
+            }
+
+            showNotification(message, type = 'info') {
+                // Simple notification - you can enhance this with a proper notification library
+                alert(`${type.toUpperCase()}: ${message}`);
+            }
+
+            startAutoRefresh() {
+                // Refresh status every 30 seconds
+                setInterval(() => {
+                    this.loadStatus();
+                }, 30000);
+            }
+        }
+
+        // Initialize automation manager when page loads
+        let automationManager;
+        document.addEventListener('DOMContentLoaded', () => {
+            automationManager = new AutomationManager();
+        });
+    </script>
+</body>
+</html>
